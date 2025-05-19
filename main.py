@@ -17,7 +17,9 @@ class Application(tk.Tk):
         self.original_image = None  # Will store PIL Image object
         self.original_cv_image = None  # Will store OpenCV image format
         self.grayscale_image = None  # Will store grayscale PIL Image
+        self.current_filtered_image = None  # Will store currently filtered image
         self.current_filter = None  # Track current filter
+        self.filter_count = 0  # Track how many times current filter has been applied
 
         # Left Frame for buttons
         self.left_frame = tk.Frame(
@@ -132,6 +134,9 @@ class Application(tk.Tk):
             # Convert to grayscale
             gray_cv_image = cv.cvtColor(self.original_cv_image, cv.COLOR_BGR2GRAY)
             self.grayscale_image = Image.fromarray(gray_cv_image)
+            self.current_filtered_image = (
+                self.grayscale_image
+            )  # Initialize the current filtered image
 
             # Display the grayscale image
             self.display_image(self.grayscale_image, self.image_label_original)
@@ -150,19 +155,36 @@ class Application(tk.Tk):
             print(f"Error opening image: {e}")
 
     def apply_filter(self, filter_name):
-        """Apply the selected filter to the grayscale image and display the result"""
+        """Apply the selected filter to the current image and display the result"""
         if self.grayscale_image is None:
             self.status_bar.config(text="Please open an image first")
             return
 
         try:
-            self.status_bar.config(text=f"Applying {filter_name} filter...")
+            # Check if this is the same filter as before
+            if filter_name == self.current_filter:
+                # Incrementing filter count for the same filter
+                self.filter_count += 1
+                input_image = (
+                    self.current_filtered_image
+                )  # Use the current filtered image as input
+                status_text = f"Reapplying {filter_name} filter (x{self.filter_count})"
+            else:
+                # New filter selected, reset count
+                self.filter_count = 1
+                input_image = (
+                    self.grayscale_image
+                )  # Start from the original grayscale image
+                status_text = f"Applying {filter_name} filter"
+
+            self.status_bar.config(text=status_text)
             self.update_idletasks()  # Update the UI
 
-            # Apply the filter using our processor, passing the grayscale image
-            filtered_image = self.image_processor.apply_filter(
-                self.grayscale_image, filter_name
-            )
+            # Apply the filter using our processor
+            filtered_image = self.image_processor.apply_filter(input_image, filter_name)
+
+            # Store the result as the current filtered image for potential reapplication
+            self.current_filtered_image = filtered_image
 
             # Display the filtered image
             self.display_image(filtered_image, self.image_label_filtered)
@@ -171,7 +193,7 @@ class Application(tk.Tk):
             self.current_filter = filter_name
 
             # Update status
-            self.status_bar.config(text=f"Applied {filter_name} filter")
+            self.status_bar.config(text=f"{status_text} - Complete")
 
         except Exception as e:
             self.status_bar.config(text=f"Error applying filter: {str(e)}")
@@ -214,6 +236,10 @@ class Application(tk.Tk):
         """Clear the filtered image display"""
         self.image_label_filtered.config(image="")
         self.current_filter = None
+        self.filter_count = 0
+        self.current_filtered_image = (
+            self.grayscale_image if self.grayscale_image else None
+        )
 
     def save_image(self):
         """Save the filtered image if available"""
@@ -222,10 +248,8 @@ class Application(tk.Tk):
             return
 
         try:
-            # Get filtered image from the label
-            filtered_image = self.image_processor.apply_filter(
-                self.grayscale_image, self.current_filter
-            )
+            # Get the current filtered image (already processed)
+            filtered_image = self.current_filtered_image
 
             # Ask for save location
             file_path = filedialog.asksaveasfilename(

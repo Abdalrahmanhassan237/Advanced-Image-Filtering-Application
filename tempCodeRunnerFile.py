@@ -16,7 +16,6 @@ class Application(tk.Tk):
         self.image_processor = ImageProcessor()
         self.original_image = None  # Will store PIL Image object
         self.original_cv_image = None  # Will store OpenCV image format
-        self.grayscale_image = None  # Will store grayscale PIL Image
         self.current_filter = None  # Track current filter
 
         # Left Frame for buttons
@@ -32,7 +31,7 @@ class Application(tk.Tk):
         self.center_frame.pack(
             padx=10, pady=10, side=tk.LEFT, fill=tk.BOTH, expand=True
         )
-        self.center_label = tk.Label(self.center_frame, text="Grayscale Image")
+        self.center_label = tk.Label(self.center_frame, text="Original Image")
         self.center_label.pack(pady=5)
         self.image_label_original = tk.Label(self.center_frame)
         self.image_label_original.pack(pady=5, expand=True)
@@ -108,7 +107,7 @@ class Application(tk.Tk):
             button.pack(pady=3, padx=10)
 
     def open_image(self):
-        """Open an image file, convert to grayscale, and display it in the center frame"""
+        """Open an image file and display it in the center frame"""
         try:
             file_path = filedialog.askopenfilename(
                 filetypes=[
@@ -129,29 +128,23 @@ class Application(tk.Tk):
             rgb_image = cv.cvtColor(self.original_cv_image, cv.COLOR_BGR2RGB)
             self.original_image = Image.fromarray(rgb_image)
 
-            # Convert to grayscale
-            gray_cv_image = cv.cvtColor(self.original_cv_image, cv.COLOR_BGR2GRAY)
-            self.grayscale_image = Image.fromarray(gray_cv_image)
-
-            # Display the grayscale image
-            self.display_image(self.grayscale_image, self.image_label_original)
+            # Display the original image
+            self.display_image(self.original_image, self.image_label_original)
 
             # Clear the filtered image when a new image is loaded
             self.clear_filtered_image()
 
             # Update status
             filename = os.path.basename(file_path)
-            self.status_bar.config(
-                text=f"Loaded and converted to grayscale: {filename}"
-            )
+            self.status_bar.config(text=f"Loaded: {filename}")
 
         except Exception as e:
             self.status_bar.config(text=f"Error: {str(e)}")
             print(f"Error opening image: {e}")
 
     def apply_filter(self, filter_name):
-        """Apply the selected filter to the grayscale image and display the result"""
-        if self.grayscale_image is None:
+        """Apply the selected filter to the original image and display the result"""
+        if self.original_image is None:
             self.status_bar.config(text="Please open an image first")
             return
 
@@ -159,9 +152,9 @@ class Application(tk.Tk):
             self.status_bar.config(text=f"Applying {filter_name} filter...")
             self.update_idletasks()  # Update the UI
 
-            # Apply the filter using our processor, passing the grayscale image
+            # Apply the filter using our processor
             filtered_image = self.image_processor.apply_filter(
-                self.grayscale_image, filter_name
+                self.original_image, filter_name
             )
 
             # Display the filtered image
@@ -224,7 +217,7 @@ class Application(tk.Tk):
         try:
             # Get filtered image from the label
             filtered_image = self.image_processor.apply_filter(
-                self.grayscale_image, self.current_filter
+                self.original_image, self.current_filter
             )
 
             # Ask for save location
